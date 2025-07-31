@@ -520,4 +520,3 @@ class FileManagerService
         return round($size, 2) . ' ' . $units[$unitIndex];
     }
 }
-}

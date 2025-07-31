@@ -230,7 +230,7 @@ class Configuration implements ConfigurationInterface
                             ->defaultTrue()
                             ->info('Active le glisser-déposer')
                         ->end()
-                        ->arrayNode('default_view')
+                        ->scalarNode('default_view')
                             ->info('Vue par défaut (grid ou list)')
                             ->validate()
                                 ->ifNotInArray(['grid', 'list'])

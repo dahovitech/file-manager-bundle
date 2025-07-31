@@ -48,6 +48,11 @@ class FileManagerExtension extends Extension
 
         // Configuration des métadonnées
         $container->setParameter('file_manager.metadata', $config['metadata']);
+        
+        // Configuration des storages Flysystem
+        $container->setParameter('flysystem_storages', [
+            'local.storage' => 'oneup_flysystem.local_storage_filesystem_filesystem'
+        ]);
 
         // Configuration de sécurité
         $container->setParameter('file_manager.security', $config['security']);
