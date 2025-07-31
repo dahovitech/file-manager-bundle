@@ -1,5 +1,7 @@
 # 📁 FileManagerBundle
 
+## Version 1.0.0
+
 [![PHP Version](https://img.shields.io/badge/php-%5E8.2-blue)](https://php.net)
 [![Symfony Version](https://img.shields.io/badge/symfony-%5E7.0-blue)](https://symfony.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -440,5 +442,5 @@ Ce projet est sous licence MIT. Voir [LICENSE](LICENSE) pour plus de détails.
 ---
 
 <div align="center">
-  Développé avec ❤️ par <a href="https://dahovitech.com">Dahovitech</a>
+  Développé avec ❤️ par <a href="https://dahovi.com">Dahovitech</a>
 </div>
