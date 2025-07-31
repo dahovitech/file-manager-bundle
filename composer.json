@@ -1,0 +1,147 @@
+{
+    "name": "dahovitech/file-manager-bundle",
+    "type": "symfony-bundle",
+    "description": "Bundle Symfony moderne pour la gestion avancée de fichiers avec support multi-stockage, thumbnails, métadonnées et interface utilisateur intuitive",
+    "keywords": [
+        "symfony",
+        "bundle",
+        "file-manager",
+        "upload",
+        "storage",
+        "flysystem",
+        "aws-s3",
+        "google-cloud",
+        "ftp",
+        "thumbnails",
+        "metadata",
+        "file-upload",
+        "drag-drop"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Prudence ASSOGBA",
+            "email": "jprud67@gmail.com",
+            "role": "Developer"
+        },
+        {
+            "name": "Dahovitech",
+            "homepage": "https://dahovitech.com",
+            "role": "Sponsor"
+        }
+    ],
+    "homepage": "https://github.com/dahovitech/file-manager-bundle",
+    "support": {
+        "issues": "https://github.com/dahovitech/file-manager-bundle/issues",
+        "wiki": "https://github.com/dahovitech/file-manager-bundle/wiki",
+        "source": "https://github.com/dahovitech/file-manager-bundle"
+    },
+    "require": {
+        "php": "^8.2",
+        "ext-gd": "*",
+        "ext-fileinfo": "*",
+        "symfony/framework-bundle": "^7.0",
+        "symfony/console": "^7.0",
+        "symfony/validator": "^7.0",
+        "symfony/serializer": "^7.0",
+        "symfony/event-dispatcher": "^7.0",
+        "symfony/cache": "^7.0",
+        "doctrine/orm": "^2.17|^3.0",
+        "doctrine/doctrine-bundle": "^2.11",
+        "oneup/flysystem-bundle": "^4.0",
+        "league/flysystem": "^3.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0|^11.0",
+        "symfony/phpunit-bridge": "^7.0",
+        "symfony/browser-kit": "^7.0",
+        "symfony/css-selector": "^7.0",
+        "symfony/dom-crawler": "^7.0",
+        "symfony/maker-bundle": "^1.0",
+        "phpstan/phpstan": "^1.10",
+        "phpstan/phpstan-symfony": "^1.3",
+        "friendsofphp/php-cs-fixer": "^3.0",
+        "rector/rector": "^1.0"
+    },
+    "suggest": {
+        "league/flysystem-aws-s3-v3": "For AWS S3 storage support",
+        "league/flysystem-ftp": "For FTP storage support",
+        "league/flysystem-google-cloud-storage": "For Google Cloud Storage support",
+        "league/flysystem-sftp-v3": "For SFTP storage support",
+        "league/flysystem-azure-blob-storage": "For Azure Blob Storage support",
+        "knplabs/knp-paginator-bundle": "For enhanced pagination features",
+        "symfony/rate-limiter": "For upload rate limiting",
+        "ext-imagick": "For advanced image processing (alternative to GD)",
+        "ext-exif": "For EXIF metadata extraction from images",
+        "james-heinrich/getid3": "For audio/video metadata extraction",
+        "clamav/clamav": "For virus scanning capabilities"
+    },
+    "autoload": {
+        "psr-4": {
+            "Dahovitech\\FileManagerBundle\\": ""
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Dahovitech\\FileManagerBundle\\Tests\\": "Tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "symfony/flex": true,
+            "symfony/runtime": true
+        },
+        "optimize-autoloader": true,
+        "preferred-install": {
+            "*": "dist"
+        }
+    },
+    "extra": {
+        "symfony": {
+            "allow-contrib": false,
+            "require": "7.0.*"
+        },
+        "branch-alias": {
+            "dev-main": "2.0-dev"
+        }
+    },
+    "scripts": {
+        "test": [
+            "php vendor/bin/phpunit"
+        ],
+        "test-coverage": [
+            "php vendor/bin/phpunit --coverage-html coverage --coverage-clover coverage.xml"
+        ],
+        "cs-fix": [
+            "php vendor/bin/php-cs-fixer fix --diff --verbose"
+        ],
+        "cs-check": [
+            "php vendor/bin/php-cs-fixer fix --diff --dry-run --verbose"
+        ],
+        "phpstan": [
+            "php vendor/bin/phpstan analyse"
+        ],
+        "rector": [
+            "php vendor/bin/rector --dry-run"
+        ],
+        "rector-fix": [
+            "php vendor/bin/rector"
+        ],
+        "quality": [
+            "@cs-check",
+            "@phpstan",
+            "@test"
+        ],
+        "post-install-cmd": [
+            "@php bin/console cache:clear",
+            "@php bin/console assets:install"
+        ],
+        "post-update-cmd": [
+            "@php bin/console cache:clear",
+            "@php bin/console assets:install"
+        ]
+    }
+}

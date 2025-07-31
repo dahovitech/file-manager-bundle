@@ -1,0 +1,20 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Dahovitech\FileManagerBundle\Service\FileManagerService:
+        arguments:
+            $storages:
+                local.storage: '@oneup_flysystem.local_storage_filesystem'
+                ftp.storage: '@oneup_flysystem.ftp_storage_filesystem'
+                aws_s3.storage: '@oneup_flysystem.aws_s3_storage_filesystem'
+                google_drive.storage: '@oneup_flysystem.google_drive_storage_filesystem'
+
+    Dahovitech\FileManagerBundle\Controller\FileManagerController:
+        arguments:
+            $storages:
+                local.storage: '@oneup_flysystem.local_storage_filesystem'
+                ftp.storage: '@oneup_flysystem.ftp_storage_filesystem'
+                aws_s3.storage: '@oneup_flysystem.aws_s3_storage_filesystem'
+                google_drive.storage: '@oneup_flysystem.google_drive_storage_filesystem'

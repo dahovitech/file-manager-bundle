@@ -1,0 +1,824 @@
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('bundles/filemanager/css/file-manager.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block body %}
+<div class="file-manager-container">
+    <!-- Header -->
+    <header class="fm-header">
+        <div class="fm-header-left">
+            <h1 class="fm-title">
+                <i class="fas fa-folder-open"></i>
+                Gestionnaire de fichiers
+            </h1>
+            <nav class="fm-breadcrumb" id="breadcrumb">
+                <a href="javascript:void(0)" class="fm-breadcrumb-item" data-folder-id="">
+                    <i class="fas fa-home"></i> Racine
+                </a>
+                {% if currentFolder %}
+                    {% for ancestor in currentFolder.ancestors %}
+                        <span class="fm-breadcrumb-separator">/</span>
+                        <a href="javascript:void(0)" class="fm-breadcrumb-item" data-folder-id="{{ ancestor.id }}">
+                            {{ ancestor.name }}
+                        </a>
+                    {% endfor %}
+                    <span class="fm-breadcrumb-separator">/</span>
+                    <span class="fm-breadcrumb-current">{{ currentFolder.name }}</span>
+                {% endif %}
+            </nav>
+        </div>
+        <div class="fm-header-right">
+            <div class="fm-view-toggle">
+                <button class="fm-view-btn fm-view-btn--active" data-view="grid" title="Vue grille">
+                    <i class="fas fa-th"></i>
+                </button>
+                <button class="fm-view-btn" data-view="list" title="Vue liste">
+                    <i class="fas fa-list"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toolbar -->
+    <div class="fm-toolbar">
+        <div class="fm-toolbar-left">
+            <button class="fm-btn fm-btn--primary" id="new-folder-btn">
+                <i class="fas fa-folder-plus"></i> Nouveau dossier
+            </button>
+            <button class="fm-btn fm-btn--primary" id="upload-btn">
+                <i class="fas fa-upload"></i> Téléverser
+            </button>
+        </div>
+        <div class="fm-toolbar-right">
+            <div class="fm-search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Rechercher..." id="search-input" value="{{ search }}">
+            </div>
+            <div class="fm-filter-dropdown">
+                <button class="fm-btn fm-btn--secondary" id="filter-btn">
+                    <i class="fas fa-filter"></i> Filtres
+                </button>
+                <div class="fm-dropdown-menu" id="filter-menu">
+                    <div class="fm-filter-group">
+                        <label>Type de fichier</label>
+                        <select id="type-filter">
+                            <option value="">Tous les types</option>
+                            <option value="image">Images</option>
+                            <option value="video">Vidéos</option>
+                            <option value="audio">Audio</option>
+                            <option value="document">Documents</option>
+                            <option value="pdf">PDF</option>
+                        </select>
+                    </div>
+                    <div class="fm-filter-group">
+                        <label>Stockage</label>
+                        <select id="storage-filter">
+                            <option value="">Tous les stockages</option>
+                            {% for storage in storages %}
+                                <option value="{{ storage }}" {% if currentStorage == storage %}selected{% endif %}>
+                                    {{ storage|replace({'.storage': ''})|title }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Zone -->
+    <div class="fm-upload-zone" id="upload-zone" style="display: none;">
+        <div class="fm-upload-content">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Glissez-déposez vos fichiers ici ou <span class="fm-upload-browse" id="browse-files">parcourez</span></p>
+            <div class="fm-upload-options">
+                <label>Stockage:</label>
+                <select id="upload-storage">
+                    {% for storage in storages %}
+                        <option value="{{ storage }}" {% if currentStorage == storage %}selected{% endif %}>
+                            {{ storage|replace({'.storage': ''})|title }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <input type="file" id="file-input" multiple style="display: none;">
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="fm-progress-container" id="progress-container" style="display: none;">
+        <div class="fm-progress-bar">
+            <div class="fm-progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="fm-progress-text" id="progress-text">0%</div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="fm-content">
+        <!-- Stats Panel -->
+        <div class="fm-stats" id="stats-panel">
+            {% if stats %}
+                {% for storage, stat in stats %}
+                    <div class="fm-stat-item">
+                        <div class="fm-stat-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="fm-stat-content">
+                            <div class="fm-stat-title">{{ storage|replace({'.storage': ''})|title }}</div>
+                            <div class="fm-stat-value">{{ stat.file_count }} fichiers</div>
+                            <div class="fm-stat-size">{{ stat.human_readable_size }}</div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- File Grid -->
+        <div class="fm-file-grid" id="file-grid">
+            <!-- Folders -->
+            {% for folder in folders %}
+                <div class="fm-file-item fm-folder-item" data-type="folder" data-id="{{ folder.id }}">
+                    <div class="fm-file-icon">
+                        <i class="fas fa-folder"></i>
+                    </div>
+                    <div class="fm-file-name" title="{{ folder.name }}">{{ folder.name }}</div>
+                    <div class="fm-file-meta">
+                        <span class="fm-file-count">{{ folder.totalFilesCount }} fichier(s)</span>
+                        <span class="fm-file-size">{{ folder.humanReadableTotalSize }}</span>
+                    </div>
+                    <div class="fm-file-actions">
+                        <button class="fm-action-btn" title="Ouvrir" onclick="openFolder({{ folder.id }})">
+                            <i class="fas fa-folder-open"></i>
+                        </button>
+                        <button class="fm-action-btn" title="Renommer" onclick="renameFolder({{ folder.id }})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="fm-action-btn fm-action-btn--danger" title="Supprimer" onclick="deleteFolder({{ folder.id }})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+
+            <!-- Files -->
+            {% for file in files %}
+                <div class="fm-file-item" data-type="file" data-id="{{ file.id }}" data-mime="{{ file.mimeType }}">
+                    <div class="fm-file-icon">
+                        {% if file.isImage %}
+                            {% if file.hasThumbnail %}
+                                <img src="{{ path('file_manager_thumbnail', {'id': file.id}) }}" alt="{{ file.filename }}">
+                            {% else %}
+                                <img src="{{ path('file_manager_serve', {'id': file.id}) }}" alt="{{ file.filename }}">
+                            {% endif %}
+                        {% elseif file.isPdf %}
+                            <i class="fas fa-file-pdf"></i>
+                        {% elseif file.isVideo %}
+                            <i class="fas fa-file-video"></i>
+                        {% elseif file.isAudio %}
+                            <i class="fas fa-file-audio"></i>
+                        {% elseif file.isDocument %}
+                            <i class="fas fa-file-alt"></i>
+                        {% else %}
+                            <i class="fas fa-file"></i>
+                        {% endif %}
+                    </div>
+                    <div class="fm-file-name" title="{{ file.filename }}">{{ file.filename }}</div>
+                    <div class="fm-file-meta">
+                        <span class="fm-file-size">{{ file.humanReadableSize }}</span>
+                        <span class="fm-file-date">{{ file.uploadedAt|date('d/m/Y') }}</span>
+                    </div>
+                    <div class="fm-file-actions">
+                        <button class="fm-action-btn" title="Télécharger" onclick="downloadFile({{ file.id }})">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        {% if file.isImage %}
+                            <button class="fm-action-btn" title="Aperçu" onclick="previewFile({{ file.id }})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        {% endif %}
+                        <button class="fm-action-btn" title="Sélectionner" onclick="selectFile({{ file.id }})">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button class="fm-action-btn" title="Éditer" onclick="editFile({{ file.id }})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="fm-action-btn fm-action-btn--danger" title="Supprimer" onclick="deleteFile({{ file.id }})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Empty State -->
+        {% if files|length == 0 and folders|length == 0 %}
+            <div class="fm-empty-state">
+                <i class="fas fa-folder-open"></i>
+                <h3>Ce dossier est vide</h3>
+                <p>Commencez par téléverser des fichiers ou créer un nouveau dossier.</p>
+                <button class="fm-btn fm-btn--primary" onclick="document.getElementById('upload-btn').click()">
+                    <i class="fas fa-upload"></i> Téléverser des fichiers
+                </button>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+        <div class="fm-pagination">
+            <button class="fm-pagination-btn" {% if pagination.page <= 1 %}disabled{% endif %} 
+                    onclick="changePage({{ pagination.page - 1 }})">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            
+            {% for page in 1..pagination.pages %}
+                {% if page == pagination.page %}
+                    <span class="fm-pagination-current">{{ page }}</span>
+                {% else %}
+                    <button class="fm-pagination-btn" onclick="changePage({{ page }})">{{ page }}</button>
+                {% endif %}
+            {% endfor %}
+            
+            <button class="fm-pagination-btn" {% if pagination.page >= pagination.pages %}disabled{% endif %}
+                    onclick="changePage({{ pagination.page + 1 }})">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modals -->
+<div class="fm-modal" id="new-folder-modal">
+    <div class="fm-modal-content">
+        <div class="fm-modal-header">
+            <h3>Nouveau dossier</h3>
+            <button class="fm-modal-close" onclick="closeModal('new-folder-modal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="fm-modal-body">
+            <form id="folder-form">
+                <div class="fm-form-group">
+                    <label for="folder-name">Nom du dossier</label>
+                    <input type="text" id="folder-name" name="name" required>
+                </div>
+                <div class="fm-form-group">
+                    <label for="folder-description">Description (optionnel)</label>
+                    <textarea id="folder-description" name="description" rows="3"></textarea>
+                </div>
+                <div class="fm-form-group">
+                    <label for="folder-tags">Tags (optionnel)</label>
+                    <input type="text" id="folder-tags" name="tags" placeholder="Séparez par des virgules">
+                </div>
+                <input type="hidden" name="parent" value="{{ currentFolder ? currentFolder.id : '' }}">
+            </form>
+        </div>
+        <div class="fm-modal-footer">
+            <button class="fm-btn fm-btn--secondary" onclick="closeModal('new-folder-modal')">Annuler</button>
+            <button class="fm-btn fm-btn--primary" onclick="createFolder()">Créer</button>
+        </div>
+    </div>
+</div>
+
+<div class="fm-modal" id="edit-file-modal">
+    <div class="fm-modal-content">
+        <div class="fm-modal-header">
+            <h3>Éditer le fichier</h3>
+            <button class="fm-modal-close" onclick="closeModal('edit-file-modal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="fm-modal-body">
+            <form id="edit-file-form">
+                <div class="fm-form-group">
+                    <label for="file-description">Description</label>
+                    <textarea id="file-description" name="description" rows="3"></textarea>
+                </div>
+                <div class="fm-form-group">
+                    <label for="file-tags">Tags</label>
+                    <input type="text" id="file-tags" name="tags" placeholder="Séparez par des virgules">
+                </div>
+                <div class="fm-form-group">
+                    <label>
+                        <input type="checkbox" id="file-public" name="isPublic"> Fichier public
+                    </label>
+                </div>
+                <input type="hidden" id="edit-file-id">
+            </form>
+        </div>
+        <div class="fm-modal-footer">
+            <button class="fm-btn fm-btn--secondary" onclick="closeModal('edit-file-modal')">Annuler</button>
+            <button class="fm-btn fm-btn--primary" onclick="updateFile()">Sauvegarder</button>
+        </div>
+    </div>
+</div>
+
+<div class="fm-modal" id="preview-modal">
+    <div class="fm-modal-content fm-modal-content--large">
+        <div class="fm-modal-header">
+            <h3 id="preview-title">Aperçu</h3>
+            <button class="fm-modal-close" onclick="closeModal('preview-modal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="fm-modal-body">
+            <div id="preview-content"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notifications -->
+<div class="fm-toast-container" id="toast-container"></div>
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        // Configuration globale
+        const FileManager = {
+            currentFolder: {{ currentFolder ? currentFolder.id : 'null' }},
+            uploadUrl: '{{ path('file_manager_upload') }}',
+            deleteUrl: '{{ path('file_manager_delete', {id: '__ID__'}) }}',
+            selectUrl: '{{ path('file_manager_select', {id: '__ID__'}) }}',
+            createFolderUrl: '{{ path('file_manager_folder_create') }}',
+            apiFilesUrl: '{{ path('api_files_list') }}',
+            apiFileUpdateUrl: '{{ path('api_file_update', {id: '__ID__'}) }}',
+            serveFolderUrl: '{{ path('file_manager_index') }}',
+            
+            init() {
+                this.initEventListeners();
+                this.initDragAndDrop();
+                this.initSearch();
+                this.initFilters();
+                this.loadStats();
+            },
+
+            initEventListeners() {
+                // Toolbar buttons
+                document.getElementById('new-folder-btn').addEventListener('click', () => {
+                    this.showModal('new-folder-modal');
+                });
+
+                document.getElementById('upload-btn').addEventListener('click', () => {
+                    this.toggleUploadZone();
+                });
+
+                // File input
+                document.getElementById('file-input').addEventListener('change', (e) => {
+                    this.handleFileSelect(e.target.files);
+                });
+
+                document.getElementById('browse-files').addEventListener('click', () => {
+                    document.getElementById('file-input').click();
+                });
+
+                // View toggle
+                document.querySelectorAll('.fm-view-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.toggleView(e.target.closest('button').dataset.view);
+                    });
+                });
+
+                // Filter dropdown
+                document.getElementById('filter-btn').addEventListener('click', () => {
+                    this.toggleFilterMenu();
+                });
+
+                // Breadcrumb navigation
+                document.querySelectorAll('.fm-breadcrumb-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const folderId = e.target.dataset.folderId;
+                        this.navigateToFolder(folderId);
+                    });
+                });
+
+                // Close modals when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('fm-modal')) {
+                        this.closeModal(e.target.id);
+                    }
+                });
+            },
+
+            initDragAndDrop() {
+                const uploadZone = document.getElementById('upload-zone');
+                const fileGrid = document.getElementById('file-grid');
+
+                // Global drag and drop
+                document.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.showUploadZone();
+                });
+
+                document.addEventListener('dragleave', (e) => {
+                    if (!e.relatedTarget || !document.contains(e.relatedTarget)) {
+                        this.hideUploadZoneDelayed();
+                    }
+                });
+
+                document.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.hideUploadZone();
+                    if (e.dataTransfer.files.length > 0) {
+                        this.handleFileSelect(e.dataTransfer.files);
+                    }
+                });
+            },
+
+            initSearch() {
+                const searchInput = document.getElementById('search-input');
+                let searchTimeout;
+
+                searchInput.addEventListener('input', (e) => {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        this.performSearch(e.target.value);
+                    }, 500);
+                });
+            },
+
+            initFilters() {
+                document.getElementById('type-filter').addEventListener('change', () => {
+                    this.applyFilters();
+                });
+
+                document.getElementById('storage-filter').addEventListener('change', () => {
+                    this.applyFilters();
+                });
+            },
+
+            // UI Methods
+            showModal(modalId) {
+                document.getElementById(modalId).style.display = 'flex';
+            },
+
+            closeModal(modalId) {
+                document.getElementById(modalId).style.display = 'none';
+            },
+
+            showToast(message, type = 'info') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = `fm-toast fm-toast--${type}`;
+                toast.innerHTML = `
+                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'}"></i>
+                    <span>${message}</span>
+                    <button class="fm-toast-close" onclick="this.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                container.appendChild(toast);
+
+                setTimeout(() => toast.remove(), 5000);
+            },
+
+            toggleUploadZone() {
+                const zone = document.getElementById('upload-zone');
+                zone.style.display = zone.style.display === 'none' ? 'block' : 'none';
+            },
+
+            showUploadZone() {
+                document.getElementById('upload-zone').style.display = 'block';
+            },
+
+            hideUploadZone() {
+                document.getElementById('upload-zone').style.display = 'none';
+            },
+
+            hideUploadZoneDelayed() {
+                setTimeout(() => {
+                    if (!document.querySelector(':hover').closest('#upload-zone')) {
+                        this.hideUploadZone();
+                    }
+                }, 100);
+            },
+
+            toggleView(view) {
+                document.querySelectorAll('.fm-view-btn').forEach(btn => {
+                    btn.classList.remove('fm-view-btn--active');
+                });
+                document.querySelector(`[data-view="${view}"]`).classList.add('fm-view-btn--active');
+
+                const grid = document.getElementById('file-grid');
+                grid.className = `fm-file-grid fm-file-grid--${view}`;
+            },
+
+            toggleFilterMenu() {
+                const menu = document.getElementById('filter-menu');
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            },
+
+            updateProgress(percent) {
+                const container = document.getElementById('progress-container');
+                const fill = document.getElementById('progress-fill');
+                const text = document.getElementById('progress-text');
+
+                container.style.display = 'block';
+                fill.style.width = `${percent}%`;
+                text.textContent = `${Math.round(percent)}%`;
+
+                if (percent >= 100) {
+                    setTimeout(() => {
+                        container.style.display = 'none';
+                    }, 1000);
+                }
+            },
+
+            // File Operations
+            async handleFileSelect(files) {
+                if (files.length === 0) return;
+
+                const storage = document.getElementById('upload-storage').value;
+                const totalFiles = files.length;
+                let completed = 0;
+
+                for (const file of files) {
+                    try {
+                        await this.uploadFile(file, storage);
+                        completed++;
+                        this.updateProgress((completed / totalFiles) * 100);
+                    } catch (error) {
+                        this.showToast(`Erreur lors de l'upload de ${file.name}: ${error.message}`, 'error');
+                    }
+                }
+
+                if (completed > 0) {
+                    this.showToast(`${completed} fichier(s) uploadé(s) avec succès`, 'success');
+                    this.refreshFileList();
+                }
+            },
+
+            async uploadFile(file, storage) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('storage', storage);
+                formData.append('folder', this.currentFolder || '');
+
+                const response = await fetch(this.uploadUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+
+                return result.data;
+            },
+
+            async createFolder() {
+                const form = document.getElementById('folder-form');
+                const formData = new FormData(form);
+
+                try {
+                    const response = await fetch(this.createFolderUrl, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        this.showToast(result.message, 'success');
+                        this.closeModal('new-folder-modal');
+                        this.refreshFileList();
+                        form.reset();
+                    } else {
+                        this.showToast(result.error, 'error');
+                    }
+                } catch (error) {
+                    this.showToast('Erreur lors de la création du dossier', 'error');
+                }
+            },
+
+            async deleteFile(fileId) {
+                if (!confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(this.deleteUrl.replace('__ID__', fileId), {
+                        method: 'POST'
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        this.showToast(result.message, 'success');
+                        this.refreshFileList();
+                    } else {
+                        this.showToast(result.error, 'error');
+                    }
+                } catch (error) {
+                    this.showToast('Erreur lors de la suppression', 'error');
+                }
+            },
+
+            async deleteFolder(folderId) {
+                if (!confirm('Êtes-vous sûr de vouloir supprimer ce dossier ?')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/file-manager/api/folders/${folderId}`, {
+                        method: 'DELETE'
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        this.showToast(result.message, 'success');
+                        this.refreshFileList();
+                    } else {
+                        this.showToast(result.error, 'error');
+                    }
+                } catch (error) {
+                    this.showToast('Erreur lors de la suppression', 'error');
+                }
+            },
+
+            async selectFile(fileId) {
+                try {
+                    const response = await fetch(this.selectUrl.replace('__ID__', fileId));
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // Pour intégration WYSIWYG
+                        if (window.parent && window.parent !== window) {
+                            window.parent.postMessage({
+                                mceAction: 'insert',
+                                content: `<img src="${result.data.url}" alt="${result.data.filename}">`
+                            }, '*');
+                        } else {
+                            // Copier l'URL dans le presse-papier
+                            navigator.clipboard.writeText(result.data.url);
+                            this.showToast('URL copiée dans le presse-papier', 'success');
+                        }
+                    }
+                } catch (error) {
+                    this.showToast('Erreur lors de la sélection', 'error');
+                }
+            },
+
+            downloadFile(fileId) {
+                window.open(`/file-manager/serve/${fileId}`, '_blank');
+            },
+
+            async previewFile(fileId) {
+                const modal = document.getElementById('preview-modal');
+                const content = document.getElementById('preview-content');
+                const title = document.getElementById('preview-title');
+                
+                content.innerHTML = `<img src="/file-manager/serve/${fileId}" style="max-width: 100%; height: auto;">`;
+                title.textContent = 'Aperçu de l\'image';
+                this.showModal('preview-modal');
+            },
+
+            async editFile(fileId) {
+                try {
+                    const response = await fetch(`/file-manager/api/files/${fileId}`);
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        const file = result.data;
+                        document.getElementById('edit-file-id').value = fileId;
+                        document.getElementById('file-description').value = file.description || '';
+                        document.getElementById('file-tags').value = file.tags ? file.tags.join(', ') : '';
+                        document.getElementById('file-public').checked = file.isPublic;
+                        
+                        this.showModal('edit-file-modal');
+                    }
+                } catch (error) {
+                    this.showToast('Erreur lors du chargement des données', 'error');
+                }
+            },
+
+            async updateFile() {
+                const fileId = document.getElementById('edit-file-id').value;
+                const data = {
+                    description: document.getElementById('file-description').value,
+                    tags: document.getElementById('file-tags').value,
+                    isPublic: document.getElementById('file-public').checked
+                };
+
+                try {
+                    const response = await fetch(this.apiFileUpdateUrl.replace('__ID__', fileId), {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        this.showToast(result.message, 'success');
+                        this.closeModal('edit-file-modal');
+                        this.refreshFileList();
+                    } else {
+                        this.showToast(result.error, 'error');
+                    }
+                } catch (error) {
+                    this.showToast('Erreur lors de la mise à jour', 'error');
+                }
+            },
+
+            // Navigation
+            navigateToFolder(folderId) {
+                const url = new URL(window.location);
+                if (folderId) {
+                    url.searchParams.set('folder', folderId);
+                } else {
+                    url.searchParams.delete('folder');
+                }
+                window.location.href = url.toString();
+            },
+
+            openFolder(folderId) {
+                this.navigateToFolder(folderId);
+            },
+
+            changePage(page) {
+                const url = new URL(window.location);
+                url.searchParams.set('page', page);
+                window.location.href = url.toString();
+            },
+
+            // Search and Filters
+            performSearch(query) {
+                const url = new URL(window.location);
+                if (query) {
+                    url.searchParams.set('search', query);
+                } else {
+                    url.searchParams.delete('search');
+                }
+                url.searchParams.delete('page'); // Reset to first page
+                window.location.href = url.toString();
+            },
+
+            applyFilters() {
+                const url = new URL(window.location);
+                const typeFilter = document.getElementById('type-filter').value;
+                const storageFilter = document.getElementById('storage-filter').value;
+
+                if (typeFilter) {
+                    url.searchParams.set('type', typeFilter);
+                } else {
+                    url.searchParams.delete('type');
+                }
+
+                if (storageFilter) {
+                    url.searchParams.set('storage', storageFilter);
+                } else {
+                    url.searchParams.delete('storage');
+                }
+
+                url.searchParams.delete('page'); // Reset to first page
+                window.location.href = url.toString();
+            },
+
+            refreshFileList() {
+                window.location.reload();
+            },
+
+            async loadStats() {
+                try {
+                    const response = await fetch('/file-manager/api/stats');
+                    const result = await response.json();
+                    if (result.success) {
+                        this.updateStatsDisplay(result.data);
+                    }
+                } catch (error) {
+                    console.warn('Erreur lors du chargement des statistiques:', error);
+                }
+            },
+
+            updateStatsDisplay(stats) {
+                // Update stats panel if needed
+                console.log('Stats updated:', stats);
+            }
+        };
+
+        // Global functions for inline event handlers
+        window.openFolder = (id) => FileManager.openFolder(id);
+        window.deleteFile = (id) => FileManager.deleteFile(id);
+        window.deleteFolder = (id) => FileManager.deleteFolder(id);
+        window.selectFile = (id) => FileManager.selectFile(id);
+        window.downloadFile = (id) => FileManager.downloadFile(id);
+        window.previewFile = (id) => FileManager.previewFile(id);
+        window.editFile = (id) => FileManager.editFile(id);
+        window.updateFile = () => FileManager.updateFile();
+        window.createFolder = () => FileManager.createFolder();
+        window.closeModal = (id) => FileManager.closeModal(id);
+        window.changePage = (page) => FileManager.changePage(page);
+        window.renameFolder = (id) => FileManager.editFolder(id);
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            FileManager.init();
+        });
+    </script>
+{% endblock %}
+{% endblock %}
