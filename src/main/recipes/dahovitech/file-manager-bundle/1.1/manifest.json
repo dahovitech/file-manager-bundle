@@ -1,0 +1,15 @@
+{
+    "bundles": {
+        "Dahovitech\\FileManagerBundle\\FileManagerBundle": ["all"]
+    },
+    "copy-from-recipe": {
+        "config/": "%CONFIG_DIR%/"
+    },
+    "gitignore": [
+        "/public/uploads/"
+    ],
+    "env": {
+        "FILE_MANAGER_STORAGE_PATH": "%kernel.project_dir%/public/uploads"
+    }
+}
+

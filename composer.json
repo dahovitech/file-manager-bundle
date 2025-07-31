@@ -101,8 +101,8 @@
     },
     "extra": {
         "symfony": {
-            "allow-contrib": false,
-            "require": "7.0.*"
+            "allow-contrib": true,
+            "require": "^7.3"
         },
         "branch-alias": {
             "dev-main": "2.0-dev"

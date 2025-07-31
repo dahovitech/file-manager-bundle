@@ -1,0 +1,38 @@
+file_manager:
+    # Taille maximale de fichier (50MB)
+    max_file_size: 52428800
+    
+    # Types de fichiers autorisés
+    allowed_mime_types:
+        - 'image/jpeg'
+        - 'image/png'
+        - 'image/gif'
+        - 'image/webp'
+        - 'application/pdf'
+        - 'text/plain'
+        - 'video/mp4'
+        - 'audio/mpeg'
+    
+    # Configuration des thumbnails
+    thumbnails:
+        enabled: true
+        quality: 85
+        sizes:
+            small: { width: 150, height: 150 }
+            medium: { width: 300, height: 300 }
+            large: { width: 600, height: 600 }
+    
+    # Sécurité
+    security:
+        check_file_signature: true
+        forbidden_extensions: ['exe', 'bat', 'cmd', 'com', 'pif', 'scr', 'vbs', 'js']
+    
+    # Interface utilisateur
+    ui:
+        default_view: 'grid'
+        enable_drag_drop: true
+    
+    # Routes
+    routes:
+        prefix: '/file-manager'
+
