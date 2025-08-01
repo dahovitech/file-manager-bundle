@@ -50,9 +50,22 @@ class FileManagerExtension extends Extension
         $container->setParameter('file_manager.metadata', $config['metadata']);
         
         // Configuration des storages Flysystem
-        $container->setParameter('flysystem_storages', [
-            'local.storage' => 'oneup_flysystem.local_storage_filesystem_filesystem'
+        $container->setParameter("file_manager.flysystem_storages", [
+            "local.storage" => "file_manager.local_storage_filesystem"
         ]);
+
+        // Définition du service Flysystem local_storage_filesystem
+        $container
+            ->register("file_manager.local_storage_filesystem", "League\\Flysystem\\Filesystem")
+            ->addArgument(new Reference("file_manager.local_storage_adapter"))
+            ->setPublic(true); // Rendre le service public pour qu'il puisse être référencé
+
+        // Définition de l'adaptateur Flysystem local_storage_adapter
+        $container
+            ->register("file_manager.local_storage_adapter", "League\\Flysystem\\Local\\LocalFilesystemAdapter")
+            ->addArgument("%kernel.project_dir%/public/uploads")
+            ->setPublic(true); // Rendre l'adaptateur public
+
 
         // Configuration de sécurité
         $container->setParameter('file_manager.security', $config['security']);
@@ -100,9 +113,9 @@ class FileManagerExtension extends Extension
         // Service principal FileManager
         $fileManagerServiceDefinition = new Definition(FileManagerService::class);
         $fileManagerServiceDefinition->setArguments([
-            new Reference('doctrine.orm.entity_manager'),
-            '%flysystem_storages%', // Sera injecté par la configuration Flysystem
-            new Reference('event_dispatcher'),
+            new Reference("doctrine.orm.entity_manager"),
+            $container->getParameter("file_manager.flysystem_storages"), // Utilise le paramètre défini dans l'extension
+            new Reference("event_dispatcher"),
             new Reference('validator'),
             new Reference('file_manager.thumbnail_service'),
             new Reference('file_manager.metadata_extractor'),
@@ -116,8 +129,8 @@ class FileManagerExtension extends Extension
         // Contrôleur principal
         $controllerDefinition = new Definition(FileManagerController::class);
         $controllerDefinition->setArguments([
-            '%flysystem_storages%',
-            new Reference('file_manager.service'),
+            $container->getParameter("file_manager.flysystem_storages"),
+            new Reference("file_manager.service"),
             new Reference('doctrine.orm.entity_manager'),
             new Reference('logger'),
             new Reference('serializer'),
@@ -137,8 +150,8 @@ class FileManagerExtension extends Extension
         // Commande de nettoyage
         $cleanupCommandDefinition = new Definition(FileManagerCleanupCommand::class);
         $cleanupCommandDefinition->setArguments([
-            new Reference('doctrine.orm.entity_manager'),
-            '%flysystem_storages%',
+            new Reference("doctrine.orm.entity_manager"),
+            $container->getParameter("file_manager.flysystem_storages"),
         ]);
         $cleanupCommandDefinition->addTag('console.command');
         $container->setDefinition('file_manager.command.cleanup', $cleanupCommandDefinition);
@@ -155,10 +168,10 @@ class FileManagerExtension extends Extension
         // Commande de synchronisation
         $syncCommandDefinition = new Definition(FileManagerSyncCommand::class);
         $syncCommandDefinition->setArguments([
-            new Reference('doctrine.orm.entity_manager'),
-            '%flysystem_storages%',
-            new Reference('file_manager.thumbnail_service'),
-            new Reference('file_manager.metadata_extractor'),
+            new Reference("doctrine.orm.entity_manager"),
+            $container->getParameter("file_manager.flysystem_storages"),
+            new Reference("file_manager.thumbnail_service"),
+            new Reference("file_manager.metadata_extractor"),
         ]);
         $syncCommandDefinition->addTag('console.command');
         $container->setDefinition('file_manager.command.sync', $syncCommandDefinition);
