@@ -114,7 +114,7 @@ class FileManagerExtension extends Extension
         $fileManagerServiceDefinition = new Definition(FileManagerService::class);
         $fileManagerServiceDefinition->setArguments([
             new Reference("doctrine.orm.entity_manager"),
-            $container->getParameter("file_manager.flysystem_storages"), // Utilise le paramètre défini dans l'extension
+            ["local.storage" => new Reference("file_manager.local_storage_filesystem")], // Injecte directement l'instance du service Flysystem
             new Reference("event_dispatcher"),
             new Reference('validator'),
             new Reference('file_manager.thumbnail_service'),
@@ -129,7 +129,7 @@ class FileManagerExtension extends Extension
         // Contrôleur principal
         $controllerDefinition = new Definition(FileManagerController::class);
         $controllerDefinition->setArguments([
-            $container->getParameter("file_manager.flysystem_storages"),
+            ["local.storage" => new Reference("file_manager.local_storage_filesystem")],
             new Reference("file_manager.service"),
             new Reference('doctrine.orm.entity_manager'),
             new Reference('logger'),
@@ -151,7 +151,7 @@ class FileManagerExtension extends Extension
         $cleanupCommandDefinition = new Definition(FileManagerCleanupCommand::class);
         $cleanupCommandDefinition->setArguments([
             new Reference("doctrine.orm.entity_manager"),
-            $container->getParameter("file_manager.flysystem_storages"),
+            ["local.storage" => new Reference("file_manager.local_storage_filesystem")],
         ]);
         $cleanupCommandDefinition->addTag('console.command');
         $container->setDefinition('file_manager.command.cleanup', $cleanupCommandDefinition);
@@ -169,7 +169,7 @@ class FileManagerExtension extends Extension
         $syncCommandDefinition = new Definition(FileManagerSyncCommand::class);
         $syncCommandDefinition->setArguments([
             new Reference("doctrine.orm.entity_manager"),
-            $container->getParameter("file_manager.flysystem_storages"),
+            ["local.storage" => new Reference("file_manager.local_storage_filesystem")],
             new Reference("file_manager.thumbnail_service"),
             new Reference("file_manager.metadata_extractor"),
         ]);
